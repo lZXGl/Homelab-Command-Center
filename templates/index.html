@@ -1,6 +1,24 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="apple">
+<html lang="en">
 <head>
+    <script>
+        (function() {
+            try {
+                var savedTheme = localStorage.getItem('dashboard_theme') || 'apple';
+                var valid = ['apple', 'crimson', 'violet', 'graphite'];
+                if (savedTheme === 'monochrome') {
+                    savedTheme = 'graphite';
+                    localStorage.setItem('dashboard_theme', 'graphite');
+                } else if (valid.indexOf(savedTheme) === -1) {
+                    savedTheme = 'apple';
+                    localStorage.setItem('dashboard_theme', 'apple');
+                }
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            } catch(e) {
+                document.documentElement.setAttribute('data-theme', 'apple');
+            }
+        })();
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Homelab-Command-Center</title>
@@ -27,9 +45,9 @@
     <script src="{{ url_for('static', filename='molten_metal.js') }}"></script>
     <script src="{{ url_for('static', filename='plasma.js') }}"></script>
     <script src="{{ url_for('static', filename='prismatic_burst.js') }}"></script>
-    <script src="{{ url_for('static', filename='bg_switcher.js') }}"></script>
+    <script src="{{ url_for('static', filename='bg_switcher.js') }}?v=20261117_v20"></script>
     
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=20260920c">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=20261117_v20">
 </head>
 <body>
 
@@ -51,19 +69,31 @@
                     </div>
                     <div class="tasks-pill pill-settings" title="Click to view and manage System Operations, Updates, Dockge, and Settings" onclick="switchCategory('system-tab')">
                         <i class="fa-solid fa-gear" style="color: #2997ff;"></i>
-                        <strong style="color: #f5f5f7;">Settings</strong>
+                        <strong>Settings</strong>
                     </div>
                     <div class="tasks-pill pill-search" id="header-search-btn" title="Search scripts, services, containers, quick actions... (Ctrl+K)" onclick="openCommandPalette()">
                         <i class="fa-solid fa-magnifying-glass" style="color: var(--accent-cyan);"></i>
-                        <strong style="color: #67e8f9;">Search</strong>
+                        <strong>Search</strong>
                     </div>
                     <div class="tasks-pill pill-tasks" title="Click to view all active running background tasks" onclick="openActiveTasksModal()">
                         <i class="fa-solid fa-bars-progress" style="color:var(--accent-cyan)"></i>
                         <strong id="header-active-tasks">Active Tasks: 0</strong>
                     </div>
+                    <button class="tasks-pill pill-reboot hold-reboot-btn pill-hold-reboot" id="header-reboot-pill" style="display: none;"
+                            title="System restart required for pending updates. Hold 1.5s to restart."
+                            onpointerdown="startHoldReboot(event, this)"
+                            onpointerup="cancelHoldReboot(this)"
+                            onpointerleave="cancelHoldReboot(this)"
+                            oncontextmenu="event.preventDefault()">
+                        <div class="hold-fill"></div>
+                        <span class="hold-text">
+                            <i class="fa-solid fa-power-off"></i>
+                            <strong id="header-reboot-label"></strong>
+                        </span>
+                    </button>
                     <div class="tasks-pill pill-quick-actions" style="border-color: rgba(6, 182, 212, 0.4); background: rgba(6, 182, 212, 0.12); cursor: pointer;" title="Quick Actions & System Controls" onclick="openQuickActionModal()">
                         <i class="fa-solid fa-bolt-lightning" style="color: var(--accent-cyan);"></i>
-                        <strong style="color: #67e8f9;">Quick Actions</strong>
+                        <strong>Quick Actions</strong>
                     </div>
                 </div>
             </div>
@@ -75,8 +105,7 @@
                 <div class="stat-pill stat-skeleton"><i class="fa-solid fa-microchip" style="color:var(--accent-amber); opacity:0.6;"></i> CPU: <span class="skeleton-bar" style="width: 68px;"></span></div>
                 <div class="stat-pill stat-skeleton"><i class="fa-solid fa-memory" style="color:var(--accent-cyan); opacity:0.6;"></i> RAM: <span class="skeleton-bar" style="width: 52px;"></span></div>
                 <div class="stat-pill stat-skeleton"><i class="fa-solid fa-gamepad" style="color:#ec4899; opacity:0.6;"></i> GPU: <span class="skeleton-bar" style="width: 68px;"></span></div>
-                <div class="stat-pill stat-skeleton"><i class="fa-solid fa-layer-group" style="color:#c084fc; opacity:0.6;"></i> VRAM: <span class="skeleton-bar" style="width: 52px;"></span></div>
-                <div class="stat-pill stat-skeleton"><i class="fa-solid fa-hard-drive" style="opacity:0.6;"></i> Disk: <span class="skeleton-bar" style="width: 55px;"></span></div>
+                <div class="stat-pill stat-skeleton"><i class="fa-solid fa-hard-drive" style="color:var(--accent-cyan); opacity:0.6;"></i> Disks: <span class="skeleton-bar" style="width: 140px;"></span></div>
                 <div class="stat-pill stat-skeleton"><i class="fa-solid fa-globe" style="color:#818cf8; opacity:0.6;"></i> Total DNS: <span class="skeleton-bar" style="width: 60px;"></span></div>
                 <div class="stat-pill stat-skeleton"><i class="fa-solid fa-shield-virus" style="color:var(--accent-green); opacity:0.6;"></i> Blocked: <span class="skeleton-bar" style="width: 78px;"></span></div>
             </div>
@@ -96,8 +125,6 @@
             <button class="tab-btn" onclick="switchCategory('smart-storage-tab')"><i class="fa-solid fa-hard-drive" style="color: #06b6d4;"></i> SMART Drives</button>
             <div class="tab-divider"></div>
             <button class="tab-btn" onclick="switchCategory('pipelines-tab')"><i class="fa-solid fa-bolt" style="color: #eab308;"></i> Pipelines</button>
-            <div class="tab-divider"></div>
-            <button class="tab-btn" onclick="switchCategory('ai-tab')"><i class="fa-solid fa-brain" style="color: #ec4899;"></i> AI Ops</button>
             <div class="tab-divider"></div>
             <button class="tab-btn" onclick="switchCategory('Execution History')"><i class="fa-solid fa-chart-line" style="color: #34d399;"></i> Execution History</button>
         </div>
@@ -237,8 +264,8 @@
             </button>
         </div>
 
-        <!-- 24-Hour Visual Schedule Rail & Metrics -->
-        <div style="background: rgba(18, 18, 18, 0.75); backdrop-filter: blur(16px); padding: 1.25rem 1.5rem; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <!-- 24-Hour Status & Failure Summary -->
+        <div style="background: rgba(18, 18, 18, 0.75); backdrop-filter: blur(16px); padding: 1.25rem 1.5rem; border-radius: 16px; border: 1px solid var(--border-color); margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.85rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 700; color: #fff;">
                     <i class="fa-solid fa-timeline" style="color: var(--accent-cyan);"></i> 24-Hour Execution Timeline
@@ -248,12 +275,9 @@
                 </div>
             </div>
 
-            <!-- Horizontal Scrollable Timeline Rail -->
-            <div id="timeline-visual-track" style="display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.5rem 0.25rem; min-height: 52px; align-items: center;">
-                <div class="skeleton-box" style="width: 90px; height: 32px; border-radius: 9999px; flex-shrink: 0;"></div>
-                <div class="skeleton-box" style="width: 110px; height: 32px; border-radius: 9999px; flex-shrink: 0;"></div>
-                <div class="skeleton-box" style="width: 85px; height: 32px; border-radius: 9999px; flex-shrink: 0;"></div>
-                <div class="skeleton-box" style="width: 100px; height: 32px; border-radius: 9999px; flex-shrink: 0;"></div>
+            <!-- Failures / Status Summary Strip -->
+            <div id="timeline-visual-track" style="display: flex; gap: 0.5rem; overflow-x: auto; padding: 0.25rem 0; min-height: 36px; align-items: center; flex-wrap: wrap;">
+                <div class="skeleton-line" style="width: 260px; height: 18px;"></div>
             </div>
         </div>
 
@@ -535,112 +559,6 @@
         </div>
     </div>
 
-    <!-- 2. LOCAL AI OPS & OLLAMA HUB TAB VIEW -->
-    <div class="tab-view-container" id="ai-tab-view">
-        <div class="studio-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-            <div>
-                <h2><i class="fa-solid fa-brain" style="color: #ec4899;"></i> Local AI Ops & Model Hub</h2>
-                <p style="font-size: 0.88rem; color: var(--text-secondary); margin-top: 0.4rem;">
-                    Manage local LLM models (Ollama), diagnose runtime script tracebacks with 1 click, and query your Ops Copilot.
-                </p>
-            </div>
-            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                <span id="ollama-status-badge" class="count-pill" style="font-size: 0.82rem; padding: 0.4rem 0.85rem;">Checking Ollama...</span>
-                <button class="btn btn-secondary" onclick="startOllamaService()"><i class="fa-solid fa-play" style="color:var(--accent-green);"></i> Start</button>
-                <button class="btn btn-secondary" onclick="restartOllamaService()"><i class="fa-solid fa-arrows-rotate" style="color:var(--accent-cyan);"></i> Restart</button>
-                <button class="btn btn-secondary" onclick="stopOllamaService()"><i class="fa-solid fa-stop" style="color:#f59e0b;"></i> Stop Daemon</button>
-                <button class="btn btn-secondary" onclick="stopAiProcessesAction()" style="background: rgba(239, 68, 68, 0.15); color: var(--accent-red); border-color: rgba(239, 68, 68, 0.35); font-weight:700;" title="Emergency Kill active AI runner processes to free CPU"><i class="fa-solid fa-power-off"></i> Kill Inference</button>
-                <button class="btn btn-secondary" onclick="loadAiOpsStatus()"><i class="fa-solid fa-rotate"></i> Refresh</button>
-            </div>
-        </div>
-
-        <div class="ai-ops-layout">
-            <!-- Left: Model Manager -->
-            <div style="background: rgba(18, 18, 18, 0.75); backdrop-filter: blur(16px); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 1.25rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
-                    <h3 style="font-size: 1.1rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 0.6rem;">
-                        <i class="fa-solid fa-cubes-stacked" style="color: #ec4899;"></i> Local AI Models
-                    </h3>
-                    <span id="models-count-pill" class="count-pill">0 models</span>
-                </div>
-
-                <!-- Pull Model Input -->
-                <div style="display: flex; gap: 0.5rem;">
-                    <input type="text" id="pull-model-input" placeholder="e.g. qwen2:1.5b, tinyllama" style="flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.5rem 0.8rem; color: #fff; font-size: 0.85rem;">
-                    <button class="btn btn-primary" onclick="pullModelAction()" style="font-size: 0.8rem; padding: 0.5rem 0.9rem;"><i class="fa-solid fa-download"></i> Pull</button>
-                </div>
-
-                <div id="ai-models-list" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 480px; overflow-y: auto;">
-                    <div class="skeleton-row" style="height: 38px; border-radius: 10px;"></div>
-                    <div class="skeleton-row" style="height: 38px; border-radius: 10px;"></div>
-                </div>
-            </div>
-
-            <!-- Right: Interactive Ops Copilot (Wider & Taller) -->
-            <div style="background: rgba(18, 18, 18, 0.75); backdrop-filter: blur(16px); padding: 1.5rem; border-radius: 16px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 1rem; min-height: 540px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
-                    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 0.6rem;">
-                        <i class="fa-solid fa-comments" style="color: var(--accent-cyan);"></i> Server Ops Copilot & Linux AI
-                    </h3>
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <select id="copilot-model-select" style="background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: #fff; border-radius: 6px; padding: 0.2rem 0.5rem; font-size: 0.78rem;">
-                            <option value="qwen2">qwen2:1.5b (AMD GPU)</option>
-                        </select>
-                        <button class="btn btn-secondary" onclick="stopAiProcessesAction()" style="padding: 0.2rem 0.55rem; font-size: 0.72rem; color: var(--accent-red); border-color: rgba(239,68,68,0.3);" title="Kill any active inference to free CPU/VRAM">
-                            <i class="fa-solid fa-stop"></i> Stop
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Quick Prompt Presets -->
-                <div style="display: flex; gap: 0.4rem; flex-wrap: wrap;">
-                    <button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.72rem;" onclick="setCopilotPrompt('How do I optimize Docker container RAM usage on Ubuntu?')">Docker RAM</button>
-                    <button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.72rem;" onclick="setCopilotPrompt('Write a bash command to find files larger than 1GB')">Find Large Files</button>
-                    <button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.72rem;" onclick="setCopilotPrompt('Explain how crontab 0 3 * * * works')">Explain Cron</button>
-                    <button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.72rem;" onclick="setCopilotPrompt('How to check GPU usage on AMD Radeon in terminal?')">Check AMD GPU</button>
-                </div>
-
-                <!-- Chat Display -->
-                <div id="copilot-response-box" style="flex: 1; min-height: 360px; max-height: 520px; overflow-y: auto; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.25rem; font-size: 0.88rem; color: #e2e8f0; line-height: 1.65; white-space: pre-wrap; font-family: 'JetBrains Mono', monospace;">
-Ask your Ops Copilot anything about your Linux server, crontabs, Docker configs, or debugging python automation scripts...
-                </div>
-
-                <!-- Chat Input -->
-                <div style="display: flex; gap: 0.5rem;">
-                    <input type="text" id="copilot-input" placeholder="Ask Ops Copilot (Accelerated on AMD Radeon GPU)..." onkeydown="if(event.key==='Enter') askCopilotAction()" style="flex: 1; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.7rem 0.95rem; color: #fff; font-size: 0.88rem;">
-                    <button class="btn btn-primary" onclick="askCopilotAction()" style="padding: 0.7rem 1.2rem;"><i class="fa-solid fa-paper-plane"></i></button>
-                </div>
-            </div>
-
-            <!-- OpenCode AI Studio Integration Card -->
-            <div style="background: rgba(18, 18, 18, 0.75); backdrop-filter: blur(16px); padding: 1.25rem 1.5rem; border-radius: 16px; border: 1px solid rgba(139, 92, 246, 0.35); margin-top: 0.5rem; grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.3);">
-                        <i class="fa-solid fa-code"></i>
-                    </div>
-                    <div>
-                        <div style="display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;">
-                            <h3 style="font-size: 1.05rem; font-weight: 700; color: #fff;">OpenCode AI Web Studio</h3>
-                            <span class="count-pill" style="background: rgba(139, 92, 246, 0.2); color: #c084fc; border-color: rgba(139, 92, 246, 0.35);">v1.15.12</span>
-                            <span id="opencode-status-badge" class="count-pill" style="font-size: 0.75rem;">Online (:4096)</span>
-                        </div>
-                        <p style="font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.2rem;">
-                            Autonomous AI coding agent & interactive web workspace running on port <code style="color:var(--accent-cyan);">:4096</code>.
-                        </p>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                    <a href="#" onclick="window.open('http://' + (window.location.hostname || 'localhost') + ':4096', '_blank'); return false;" class="btn btn-primary" style="background: linear-gradient(135deg, #8b5cf6, #3b82f6); font-weight: 700;">
-                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Web Studio (:4096)
-                    </a>
-                    <button class="btn btn-secondary" onclick="startOpenCodeService()"><i class="fa-solid fa-play" style="color:var(--accent-green);"></i> Start</button>
-                    <button class="btn btn-secondary" onclick="restartOpenCodeService()"><i class="fa-solid fa-arrows-rotate" style="color:var(--accent-cyan);"></i> Restart</button>
-                    <button class="btn btn-secondary" onclick="stopOpenCodeService()"><i class="fa-solid fa-stop" style="color:var(--accent-red);"></i> Stop</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- SMART DRIVES & STORAGE FORECASTER TAB VIEW -->
     <div class="tab-view-container" id="smart-storage-tab-view">
         <div class="studio-header" style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
@@ -846,7 +764,7 @@ Ask your Ops Copilot anything about your Linux server, crontabs, Docker configs,
 </div>
 
 
-    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=20260924_videostop"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=20261117_v20"></script>
 
 
 <!-- Mobile Floating Action Button (FAB) -->

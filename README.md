@@ -9,9 +9,9 @@ Designed to work dynamically out of the box on any Linux distribution with zero 
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-v1.1.0-30d158?style=flat-square&logo=linux&logoColor=white" alt="Version v1.1.0" />
+  <img src="https://img.shields.io/badge/Version-v1.2.0-30d158?style=flat-square&logo=linux&logoColor=white" alt="Version v1.2.0" />
   <img src="https://img.shields.io/badge/Watchdog-Auto--Healing-2997ff?style=flat-square&logo=docker&logoColor=white" alt="Watchdog Auto-Healing" />
-  <img src="https://img.shields.io/badge/Local_AI-Ollama_Copilot-c084fc?style=flat-square&logo=openai&logoColor=white" alt="Local AI" />
+  <img src="https://img.shields.io/badge/Themes-4_Color_Palettes-8b5cf6?style=flat-square&logo=css3&logoColor=white" alt="4 Color Themes" />
   <img src="https://img.shields.io/badge/Python-3.10+-38bdf8?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+" />
   <img src="https://img.shields.io/badge/License-MIT-gray?style=flat-square" alt="License" />
 </p>
@@ -20,23 +20,32 @@ Designed to work dynamically out of the box on any Linux distribution with zero 
 
 ## Features
 
+- **4 Color-Only Themes & WebGL Background Shaders**:
+  Built on an Apple frosted-glass base with 4 switchable accent palettes (`Default`, `Crimson`, `Violet`, and soft `Graphite` B&W) paired with 5 optional WebGL shaders (`Silk Waves`, `Floating Lines`, `Molten Metal`, `Plasma Flow`, `Prismatic Ray`) or `Minimal Dark`.
+
 - **Interactive Spotlight Command Palette (`Ctrl+K` / `/`)**:
   0ms-latency instant keyboard command switcher across automation scripts, Docker containers, system actions, and view tabs with scope filtering (`All`, `Scripts`, `Services`, `Actions`).
 
 - **Spring Physics & Fluid Navigation**:
-  Apple HIG & Emil Kowalski craft-inspired sliding active pill indicator with physical spring easing and skeleton loading states for zero layout shift.
+  Apple HIG & Emil Kowalski craft-inspired sliding active pill indicator (which smoothly fades out on non-tab views like Settings) with physical spring easing and skeleton loading states for zero layout shift.
 
-- **Synthesized Tactile Audio Feedback**:
-  Pure Web Audio API synthesizer generating subtle, crisp feedback clicks for interface interactions, with one-tap toggle controls and state persistence.
+- **Tuned Synthesized Tactile Audio Feedback**:
+  Pure Web Audio API synthesizer generating smooth tactile pops (`480→312Hz` pitch-drop curve) for interface interactions, with one-tap toggle controls and state persistence.
 
-- **Hold-to-Reboot Safety Protection**:
-  1.5-second clip-path animated press-and-hold safety confirmation for system reboots and critical operations to prevent accidental clicks.
+- **Hold-to-Reboot Safety Protection & Update Pill**:
+  1.5-second clip-path animated press-and-hold safety confirmation for system reboots, including a dynamic header `#header-reboot-pill` alert whenever `/var/run/reboot-required` is present.
 
-- **Live Telemetry & 24-Hour DNS Bandwidth Tracking**:
-  Real-time CPU, thermal temps, RAM, multi-mount storage, network bandwidth throughput, and 24-hour DNS query metrics (Pi-hole & AdGuard Home) with saved bandwidth calculation.
+- **Combined Top-Bar Telemetry & 24-Hour DNS Tracking**:
+  Real-time CPU, thermal temps (with clamped GPU temperature sensor bounds), RAM, combined `GPU + VRAM + Temp` pill, compact combined `Disks` usage pill, and 24-hour DNS query metrics (Pi-hole & AdGuard Home) with saved bandwidth calculation.
 
-- **Diagnostics Timeline & Visual Failure Snapshots**:
-  Chronological execution history and failure logs with comprehensive captured terminal states, exit codes, execution durations, and interactive snapshot inspection modals.
+- **Live CPU/RAM Active Tasks Inspector**:
+  Real-time `psutil` process-tree CPU% and RSS memory aggregation with 2-second live modal polling and automatic idle state transitions once background tasks finish.
+
+- **Execution History Timeline & Split Log/Screenshot Actions**:
+  Compact 24-hour execution timeline summary bar with success/failure ratios, plus dedicated `Log` and `Screenshot` action buttons in a sticky Actions column for fast diagnostics.
+
+- **Streamlined Service Stack & Compose Aggregation**:
+  Auto-discovered Docker containers and systemd daemons with `resource_tags` capability badges, full Docker Compose stack CPU/RAM aggregation, and live systemd MainPID telemetry.
 
 - **Storage Forecaster & SMART Analytics**:
   Physical block-device I/O telemetry, SMART health grading, linear predictive capacity forecasting, and dynamic storage capacity breakdown across media, archives, and system volumes.
@@ -55,9 +64,6 @@ Designed to work dynamically out of the box on any Linux distribution with zero 
 
 - **Event-Driven Automation Pipelines**:
   Chain multi-step actions on script completion or failure, with external webhook receiver endpoints (`/api/pipelines/webhook/<token>`).
-
-- **Local AI Ops & Ollama Hub**:
-  GPU-accelerated LLM management (pull/list/delete), 1-click log error diagnostics, and an integrated server ops copilot.
 
 - **Storage Explorer & Snapshot Backup Engine**:
   Filesystem browser with previews, 1-click compressed `.tar.gz` backup creation, and point-in-time snapshot restore.
@@ -116,18 +122,16 @@ Homelab-Command-Center/
 │   ├── storage.py             # Visual storage explorer
 │   ├── backup.py              # Snapshot backup & rollback engine
 │   ├── pipelines.py           # Event-driven pipeline workflows
-│   ├── ai_ops.py              # Local Ollama AI & copilot endpoints
 │   ├── smart_storage.py       # SMART device telemetry & forecaster
 │   └── opencode.py            # Terminal & Web IDE integration
 ├── services/                  # Business logic engines
 │   ├── system_monitor.py      # Telemetry, uptime, temperatures & DNS
 │   ├── process_manager.py     # Active tasks, execution history, alerts
-│   ├── homelab_manager.py     # Docker auto-discovery & container control
+│   ├── homelab_manager.py     # Docker auto-discovery, stack & systemd stats
 │   ├── watchdog_manager.py    # Automated daemon/container watchdog
 │   ├── cron_manager.py        # System crontab parser & editor
 │   ├── backup_manager.py      # Tar.gz archive & snapshot manager
 │   ├── automation_pipeline.py # Pipelines engine & webhook dispatcher
-│   ├── ai_ops_manager.py      # Local Ollama LLM inference & diagnostics
 │   ├── smart_storage_manager.py # Block device health, forecasting & scanner
 │   └── opencode_manager.py    # Web IDE process supervisor
 ├── scripts/                   # Bundled maintenance scripts
@@ -170,7 +174,6 @@ All paths and service integrations are fully dynamic and can be configured via e
 | `SCRIPTS_DIR` | `./scripts` | Directory for managed executable scripts |
 | `SCREENSHOTS_DIR` | `./screenshots` | Directory for saved failure screenshots |
 | `BACKUPS_DIR` | `./backups` | Directory for generated `.tar.gz` backups |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama API endpoint for AI Ops |
 
 ---
 

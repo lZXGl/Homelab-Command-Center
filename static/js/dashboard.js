@@ -2,6 +2,7 @@
     let allScriptsData = [];
     let homelabServicesData = [];
     let updateLogTimer = null;
+    let activeTasksModalTimer = null;
 
     const ALL_DAYS = [
         { val: '0', label: 'Sunday' },
@@ -841,93 +842,43 @@ if __name__ == "__main__":
     const DASHBOARD_THEMES = [
         {
             id: 'apple',
-            name: 'Apple Cupertino',
-            desc: 'macOS frosted glassmorphism, SF Pro typography, and Cupertino Action Blue',
+            name: 'Default',
+            desc: 'macOS frosted glassmorphism with classic Cupertino Blue & Cyan accents',
             icon: 'fa-apple',
             bg: '#000000',
             card: 'rgba(28, 28, 30, 0.72)',
             accent: '#2997ff',
-            glow: '#0071e3'
+            glow: '#64d2ff'
         },
         {
-            id: 'linear',
-            name: 'Linear Software Craft',
-            desc: 'Obsidian #010102 canvas with signature lavender #5E6AD2 and hairline borders',
-            icon: 'fa-layer-group',
-            bg: '#010102',
-            card: '#0f1011',
-            accent: '#5e6ad2',
-            glow: '#828fff'
-        },
-        {
-            id: 'vercel',
-            name: 'Vercel Monochrome',
-            desc: 'High-contrast monochrome geometric aesthetic with strict borders',
-            icon: 'fa-play',
-            bg: '#000000',
-            card: '#0a0a0a',
-            accent: '#ffffff',
-            glow: '#ffffff'
-        },
-        {
-            id: 'monochrome',
-            name: 'Obsidian Noir',
-            desc: 'Ultra-deep obsidian black with pure white & silver glass accents',
-            icon: 'fa-moon',
-            bg: '#09090b',
-            card: '#121216',
-            accent: '#ffffff',
-            glow: '#71717a'
-        },
-        {
-            id: 'cyberpunk',
-            name: 'Cyberpunk Neon',
-            desc: 'Deep indigo midnight with electric violet & cyan glow',
-            icon: 'fa-bolt',
-            bg: '#080918',
-            card: '#10142a',
-            accent: '#8b5cf6',
-            glow: '#06b6d4'
-        },
-        {
-            id: 'emerald',
-            name: 'Emerald Matrix',
-            desc: 'Deep obsidian forest with vibrant mint & lime highlights',
-            icon: 'fa-shield-halved',
-            bg: '#02140d',
-            card: '#061e14',
-            accent: '#10b981',
-            glow: '#34d399'
-        },
-        {
-            id: 'azure',
-            name: 'Oceanic Azure',
-            desc: 'Deep sea navy abyss with electric ice-blue & cobalt',
-            icon: 'fa-water',
-            bg: '#031020',
-            card: '#081a30',
-            accent: '#0ea5e9',
-            glow: '#38bdf8'
-        },
-        {
-            id: 'solar',
-            name: 'Solar Crimson',
-            desc: 'Dark ember charcoal with golden amber & flame accents',
+            id: 'crimson',
+            name: 'Crimson',
+            desc: 'Apple frosted glass base with bold Crimson Red & Coral accents',
             icon: 'fa-fire',
-            bg: '#140704',
-            card: '#220e0a',
-            accent: '#f59e0b',
-            glow: '#ef4444'
+            bg: '#000000',
+            card: 'rgba(28, 28, 30, 0.72)',
+            accent: '#ef4444',
+            glow: '#f87171'
         },
         {
-            id: 'sakura',
-            name: 'Tokyo Sakura',
-            desc: 'Velvet plum purple with magenta & pastel lavender glow',
+            id: 'violet',
+            name: 'Violet',
+            desc: 'Apple frosted glass base with electric Violet & Indigo accents',
             icon: 'fa-wand-magic-sparkles',
-            bg: '#120616',
-            card: '#1c0c28',
-            accent: '#ec4899',
-            glow: '#c084fc'
+            bg: '#000000',
+            card: 'rgba(28, 28, 30, 0.72)',
+            accent: '#8b5cf6',
+            glow: '#a78bfa'
+        },
+        {
+            id: 'graphite',
+            name: 'Graphite',
+            desc: 'Soft Black & White monochrome accents on the Apple glass base',
+            icon: 'fa-moon',
+            bg: '#000000',
+            card: 'rgba(28, 28, 30, 0.72)',
+            accent: '#d4d4d8',
+            glow: '#a1a1aa'
         }
     ];
 
@@ -941,10 +892,13 @@ if __name__ == "__main__":
     ];
 
     function changeTheme(themeName) {
-        document.documentElement.setAttribute('data-theme', themeName);
-        localStorage.setItem('dashboard_theme', themeName);
+        const resolved = DASHBOARD_THEMES.find(t => t.id === themeName) ? themeName : 'apple';
+        document.documentElement.setAttribute('data-theme', resolved);
+        localStorage.setItem('dashboard_theme', resolved);
         updateThemeUIState();
-        showToast(`Applied Theme: ${themeName.toUpperCase()}`, 'info', 2000);
+        if (typeof updateTabSpring === 'function') updateTabSpring();
+        const themeObj = DASHBOARD_THEMES.find(t => t.id === resolved) || DASHBOARD_THEMES[0];
+        showToast(`Applied Theme: ${themeObj.name}`, 'info', 2000);
     }
 
     function updateThemeUIState() {
@@ -1233,7 +1187,15 @@ if __name__ == "__main__":
         document.getElementById('viewer-modal').classList.add('active');
     }
 
-    const savedTheme = localStorage.getItem('dashboard_theme') || 'apple';
+    let savedTheme = localStorage.getItem('dashboard_theme') || 'apple';
+    const validThemes = ['apple', 'crimson', 'violet', 'graphite'];
+    if (savedTheme === 'monochrome') {
+        savedTheme = 'graphite';
+        localStorage.setItem('dashboard_theme', 'graphite');
+    } else if (!validThemes.includes(savedTheme)) {
+        savedTheme = 'apple';
+        localStorage.setItem('dashboard_theme', 'apple');
+    }
     document.documentElement.setAttribute('data-theme', savedTheme);
 
     function escapeHtml(str) {
@@ -1577,19 +1539,50 @@ if __name__ == "__main__":
 
             document.getElementById('header-uptime').innerText = `Uptime: ${data.uptime || 'Loading...'}`;
             document.getElementById('header-active-tasks').innerText = `Active Tasks: ${data.running_count || 0}`;
+
+            const rebootPill = document.getElementById('header-reboot-pill');
+            if (rebootPill) {
+                if (data.reboot_required) {
+                    rebootPill.style.display = 'inline-flex';
+                    const pkgs = (data.reboot_packages && data.reboot_packages.length)
+                        ? data.reboot_packages.join(', ')
+                        : 'System updates require a reboot';
+                    rebootPill.setAttribute('title', `Restart required (${pkgs}). Hold for 1.5s to restart server.`);
+                } else {
+                    rebootPill.style.display = 'none';
+                }
+            }
             loadDockgeSettingsStatus();
 
             // Hardware & Telemetry Stats Bar
             const sysStatsEl = document.getElementById('sys-stats');
             if (sysStatsEl) {
+                const fmtDisk = (v) => {
+                    const s = String(v || '0%').replace(/\s*free\s*$/i, '').trim();
+                    const parts = s.split(/\s*·\s*/);
+                    if (parts.length > 1) {
+                        const pct = parts[0];
+                        const m = parts[1].match(/^([\d.]+)\s*([A-Za-z]+)$/);
+                        if (m) {
+                            const num = parseFloat(m[1]);
+                            const compact = num >= 10
+                                ? String(Math.round(num))
+                                : num.toFixed(1).replace(/\.0$/, '');
+                            return `${pct} (${compact}${m[2]})`;
+                        }
+                        return `${pct} (${parts[1]})`;
+                    }
+                    return s;
+                };
+                const vramCompact = String(data.vram_text || data.vram_percent || '0%').replace(/\s*\/\s*/g, '/');
+                const gpuTooltip = `GPU: ${data.gpu_percent || '0%'} | VRAM: ${vramCompact} (${data.vram_percent || '0%'}) | Temp: ${data.gpu_temp || 'N/A'}`;
+                const disksTooltip = `OS Disk: ${data.disk1_percent || '0%'}${data.disk2_percent ? ` | ${data.disk2_name || 'Storage'}: ${data.disk2_percent}` : ''}`;
                 sysStatsEl.removeAttribute('aria-busy');
                 sysStatsEl.innerHTML = `
                 <div class="stat-pill" title="System CPU Usage & Thermal Temperature"><i class="fa-solid fa-microchip" style="color:var(--accent-amber)"></i> CPU: <strong>${data.cpu_percent || '0%'}</strong> <span style="color:#fbbf24; font-size:0.75rem;">(${data.cpu_temp || 'N/A'})</span></div>
                 <div class="stat-pill" title="System RAM Usage"><i class="fa-solid fa-memory" style="color:var(--accent-cyan)"></i> RAM: <strong>${data.ram_percent || '0%'}</strong></div>
-                <div class="stat-pill" title="GPU Compute Load & Temperature"><i class="fa-solid fa-gamepad" style="color:#ec4899"></i> GPU: <strong>${data.gpu_percent || '0%'}</strong> <span style="color:#f472b6; font-size:0.75rem;">(${data.gpu_temp || 'N/A'})</span></div>
-                <div class="stat-pill" title="VRAM Memory Allocation"><i class="fa-solid fa-layer-group" style="color:#c084fc"></i> VRAM: <strong>${data.vram_text || data.vram_percent || '0%'}</strong></div>
-                <div class="stat-pill" title="Storage Free"><i class="fa-solid fa-hard-drive"></i> ${data.disk2_percent ? 'OS Disk' : 'Disk'}: <strong>${data.disk1_percent || '0%'}</strong></div>
-                ${data.disk2_percent ? `<div class="stat-pill" title="Secondary Storage Volume Free"><i class="fa-solid fa-server" style="color:var(--accent-cyan)"></i> ${data.disk2_name || 'Storage'}: <strong>${data.disk2_percent}</strong></div>` : ''}
+                <div class="stat-pill" title="${gpuTooltip}"><i class="fa-solid fa-gamepad" style="color:var(--accent-secondary)"></i> GPU: <strong>${data.gpu_percent || '0%'}</strong> <span style="opacity:0.75">· ${vramCompact} · ${data.gpu_temp || 'N/A'}</span></div>
+                <div class="stat-pill stat-pill-disks" title="${disksTooltip}"><i class="fa-solid fa-hard-drive" style="color:var(--accent-cyan)"></i> Disks: <span><strong>OS</strong> ${fmtDisk(data.disk1_percent)}</span>${data.disk2_percent ? ` <span style="opacity:0.45">·</span> <span><strong>${escapeHtml(data.disk2_name || 'Storage')}</strong> ${fmtDisk(data.disk2_percent)}</span>` : ''}</div>
                 <div class="stat-pill clickable-pill" title="Pi-hole + AdGuard Combined Queries (Click to open DNS console)" onclick="openDnsChooserModal('total')"><i class="fa-solid fa-globe" style="color:#818cf8"></i> Total DNS: <strong>${dns.combined_total || '0'}</strong></div>
                 <div class="stat-pill clickable-pill stat-pill-blocked" title="Pi-hole + AdGuard Blocked Threats (Click to open Blocked DNS console)" onclick="openDnsChooserModal('blocked')"><i class="fa-solid fa-shield-virus" style="color:var(--accent-green)"></i> Blocked: <strong>${dns.combined_blocked || '0'} (${dns.block_percent || '0%'})</strong></div>
             `;
@@ -1628,65 +1621,89 @@ if __name__ == "__main__":
         } catch (e) {}
     }
 
+    function renderActiveTasksModalBody(tasks) {
+        const modalBody = document.getElementById('modal-body');
+        if (!modalBody) return;
+
+        if (!tasks.length) {
+            modalBody.innerHTML = `
+                <div style="text-align: center; padding: 2.5rem 1rem;">
+                    <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); color: var(--accent-green); display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1.25rem; border: 1px solid rgba(16, 185, 129, 0.3);">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <h3 style="font-size: 1.3rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;">All Systems Idle</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 440px; margin: 0 auto 1.5rem auto;">No automation scripts, updates, or background renders are currently running.</p>
+                    <button class="btn btn-primary" onclick="closeModal()"><i class="fa-solid fa-check"></i> Back to Dashboard</button>
+                </div>
+            `;
+            return;
+        }
+
+        modalBody.innerHTML = `
+            <div style="margin-bottom: 1.25rem; font-size:0.9rem; color:var(--text-secondary);">
+                Currently executing <strong>${tasks.length} active process(es)</strong> in background:
+            </div>
+            <div>
+                ${tasks.map(t => `
+                    <div class="task-card-item">
+                        <div style="display:flex; align-items:center; gap:0.9rem;">
+                            <div class="icon-box" style="width:42px; height:42px; min-width:42px; min-height:42px; font-size:1.1rem; background:rgba(6, 182, 212, 0.15); color:var(--accent-cyan); border-color:rgba(6, 182, 212, 0.3);">
+                                <i class="fa-solid ${t.icon}"></i>
+                            </div>
+                            <div>
+                                <h4 style="font-size:1.05rem; font-weight:700; color:#fff;">${t.name}</h4>
+                                <div style="display:flex; gap:0.6rem; align-items:center; margin-top:0.25rem; flex-wrap:wrap;">
+                                    <span class="count-pill" style="font-family:'JetBrains Mono', monospace; font-size:0.75rem;">PID: ${t.pid}</span>
+                                    <span style="font-size:0.78rem; color:var(--text-secondary);"><i class="fa-solid fa-clock"></i> ${t.elapsed}</span>
+                                    <span style="font-size:0.78rem; color:var(--accent-amber);"><i class="fa-solid fa-microchip"></i> ${t.cpu} CPU</span>
+                                    <span style="font-size:0.78rem; color:var(--accent-cyan);"><i class="fa-solid fa-memory"></i> ${t.mem} RAM</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.5rem;">
+                            <button class="btn btn-secondary" style="padding:0.45rem 0.8rem;" onclick="viewLogs('${t.name.replace(/'/g, "\\'")}', '${t.id}')">
+                                <i class="fa-solid fa-terminal"></i> Log Stream
+                            </button>
+                            <button class="btn btn-secondary" style="padding:0.45rem 0.8rem; color:var(--accent-red); border-color:rgba(239, 68, 68, 0.3);" onclick="terminateActiveTask('${t.name.replace(/'/g, "\\'")}', ${t.pid})">
+                                <i class="fa-solid fa-stop"></i> Terminate Task
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    async function refreshActiveTasksModal() {
+        const modal = document.getElementById('viewer-modal');
+        if (!modal || !modal.classList.contains('active')) {
+            if (activeTasksModalTimer) {
+                clearInterval(activeTasksModalTimer);
+                activeTasksModalTimer = null;
+            }
+            return;
+        }
+        try {
+            const res = await fetch('/api/system/active-tasks');
+            const tasks = await res.json();
+            if (!modal.classList.contains('active')) return;
+            renderActiveTasksModalBody(Array.isArray(tasks) ? tasks : []);
+        } catch (e) {
+            document.getElementById('modal-body').innerHTML = `<div style="color:var(--accent-red); padding:1rem;">Error fetching active tasks.</div>`;
+        }
+    }
+
     async function openActiveTasksModal() {
+        if (activeTasksModalTimer) {
+            clearInterval(activeTasksModalTimer);
+            activeTasksModalTimer = null;
+        }
         document.getElementById('modal-title').innerText = `Active Background Tasks Inspector`;
         document.getElementById('modal-body').innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-secondary);">Loading active task details...</div>`;
         document.getElementById('viewer-modal').classList.add('active');
 
-        try {
-            const res = await fetch('/api/system/active-tasks');
-            const tasks = await res.json();
-
-            if (!tasks.length) {
-                document.getElementById('modal-body').innerHTML = `
-                    <div style="text-align: center; padding: 2.5rem 1rem;">
-                        <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(16, 185, 129, 0.15); color: var(--accent-green); display: inline-flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 1.25rem; border: 1px solid rgba(16, 185, 129, 0.3);">
-                            <i class="fa-solid fa-circle-check"></i>
-                        </div>
-                        <h3 style="font-size: 1.3rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem;">All Systems Idle</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 440px; margin: 0 auto 1.5rem auto;">No automation scripts, updates, or background renders are currently running.</p>
-                        <button class="btn btn-primary" onclick="closeModal()"><i class="fa-solid fa-check"></i> Back to Dashboard</button>
-                    </div>
-                `;
-                return;
-            }
-
-            document.getElementById('modal-body').innerHTML = `
-                <div style="margin-bottom: 1.25rem; font-size:0.9rem; color:var(--text-secondary);">
-                    Currently executing <strong>${tasks.length} active process(es)</strong> in background:
-                </div>
-                <div>
-                    ${tasks.map(t => `
-                        <div class="task-card-item">
-                            <div style="display:flex; align-items:center; gap:0.9rem;">
-                                <div class="icon-box" style="width:42px; height:42px; min-width:42px; min-height:42px; font-size:1.1rem; background:rgba(6, 182, 212, 0.15); color:var(--accent-cyan); border-color:rgba(6, 182, 212, 0.3);">
-                                    <i class="fa-solid ${t.icon}"></i>
-                                </div>
-                                <div>
-                                    <h4 style="font-size:1.05rem; font-weight:700; color:#fff;">${t.name}</h4>
-                                    <div style="display:flex; gap:0.6rem; align-items:center; margin-top:0.25rem; flex-wrap:wrap;">
-                                        <span class="count-pill" style="font-family:'JetBrains Mono', monospace; font-size:0.75rem;">PID: ${t.pid}</span>
-                                        <span style="font-size:0.78rem; color:var(--text-secondary);"><i class="fa-solid fa-clock"></i> ${t.elapsed}</span>
-                                        <span style="font-size:0.78rem; color:var(--accent-amber);"><i class="fa-solid fa-microchip"></i> ${t.cpu} CPU</span>
-                                        <span style="font-size:0.78rem; color:var(--accent-cyan);"><i class="fa-solid fa-memory"></i> ${t.mem} RAM</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div style="display:flex; gap:0.5rem;">
-                                <button class="btn btn-secondary" style="padding:0.45rem 0.8rem;" onclick="viewLogs('${t.name.replace(/'/g, "\\'")}', '${t.id}')">
-                                    <i class="fa-solid fa-terminal"></i> Log Stream
-                                </button>
-                                <button class="btn btn-secondary" style="padding:0.45rem 0.8rem; color:var(--accent-red); border-color:rgba(239, 68, 68, 0.3);" onclick="terminateActiveTask('${t.name.replace(/'/g, "\\'")}', ${t.pid})">
-                                    <i class="fa-solid fa-stop"></i> Terminate Task
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        } catch (e) {
-            document.getElementById('modal-body').innerHTML = `<div style="color:var(--accent-red); padding:1rem;">Error fetching active tasks.</div>`;
-        }
+        await refreshActiveTasksModal();
+        activeTasksModalTimer = setInterval(refreshActiveTasksModal, 2000);
     }
 
     function terminateActiveTask(name, pid) {
@@ -1743,11 +1760,10 @@ if __name__ == "__main__":
         document.querySelectorAll('.tab-btn').forEach(btn => {
             const isMatch = (cat === 'system-tab' && (btn.innerText.includes('System') || btn.getAttribute('onclick')?.includes('system-tab'))) ||
                             (cat === 'pipelines-tab' && (btn.innerText.includes('Pipelines') || btn.getAttribute('onclick')?.includes('pipelines-tab'))) ||
-                            (cat === 'ai-tab' && (btn.innerText.includes('AI Ops') || btn.getAttribute('onclick')?.includes('ai-tab'))) ||
                             (cat === 'smart-storage-tab' && (btn.innerText.includes('SMART') || btn.getAttribute('onclick')?.includes('smart-storage-tab'))) ||
                             (cat === 'all' && btn.innerText.includes('All')) ||
                             ((cat === 'Services & Dockge' || cat === 'Homelab Services') && (btn.innerText.includes('Services') || btn.innerText.includes('Dockge') || btn.innerText.includes('Homelab'))) ||
-                            (!['smart-storage-tab','system-tab','pipelines-tab','ai-tab'].includes(cat) && btn.innerText.includes(cat));
+                            (!['smart-storage-tab','system-tab','pipelines-tab'].includes(cat) && btn.innerText.includes(cat));
             btn.classList.toggle('active', isMatch);
         });
         if (typeof updateTabSpring === 'function') updateTabSpring();
@@ -1760,11 +1776,10 @@ if __name__ == "__main__":
         const systemView = document.getElementById('system-tab-view');
         const storageView = document.getElementById('storage-tab-view');
         const pipelinesView = document.getElementById('pipelines-tab-view');
-        const aiView = document.getElementById('ai-tab-view');
         const smartStorageView = document.getElementById('smart-storage-tab-view');
 
         // Hide all special views initially
-        [historyView, systemView, storageView, pipelinesView, aiView, smartStorageView].forEach(v => {
+        [historyView, systemView, storageView, pipelinesView, smartStorageView].forEach(v => {
             if (v) v.classList.remove('active-tab');
         });
 
@@ -1780,13 +1795,6 @@ if __name__ == "__main__":
             if (pipelinesView) pipelinesView.classList.add('active-tab');
             loadPipelines();
             loadPipelineHistory();
-            return;
-        }
-
-        if (currentCategory === 'ai-tab') {
-            grid.style.display = 'none';
-            if (aiView) aiView.classList.add('active-tab');
-            loadAiOpsStatus();
             return;
         }
 
@@ -2034,7 +2042,8 @@ if __name__ == "__main__":
     }
 
     function renderServiceCardHTML(s) {
-        const searchKeywords = `${s.name} ${s.desc} ${s.port} ${s.protocol} dockge homelab container docker service`.toLowerCase();
+        const tagsList = Array.isArray(s.resource_tags) ? s.resource_tags : [];
+        const searchKeywords = `${s.name} ${s.desc} ${s.port} ${s.protocol} ${tagsList.join(' ')} dockge homelab container docker service`.toLowerCase();
         const targetUrl = resolveServiceUrl(s.url, s.port, s.protocol);
         const iconClass = getFontAwesomeClass(s.icon);
         const statsRow = (s.cpu_percent || s.mem_usage) ? `
@@ -2046,12 +2055,20 @@ if __name__ == "__main__":
                 </span>
             </div>
         ` : '';
+        const tagsRow = tagsList.length ? `
+            <div class="detail-row" style="margin-top: 2px;">
+                <span class="detail-label">Stack / HW</span>
+                <span class="detail-value" style="display:inline-flex; gap:4px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                    ${tagsList.map(t => `<span style="background:rgba(255,255,255,0.06); color:var(--text-secondary); font-size:0.7rem; font-weight:600; padding:1px 6px; border-radius:4px; border:1px solid rgba(255,255,255,0.1); white-space:nowrap;">${escapeHtml(t)}</span>`).join('')}
+                </span>
+            </div>
+        ` : '';
         return `
             <div class="service-card" data-search="${searchKeywords}">
                 <div>
                     <div class="card-header">
                         <div class="card-icon-title">
-                            <div class="icon-box">
+                            <div class="icon-box" style="color: var(--accent-primary); background: var(--accent-soft); border-color: var(--accent-tint-border); box-shadow: 0 4px 14px var(--accent-soft);">
                                 <i class="${iconClass}"></i>
                             </div>
                             <div class="card-title-text">
@@ -2074,6 +2091,7 @@ if __name__ == "__main__":
                             </span>
                         </div>
                         ${statsRow}
+                        ${tagsRow}
                     </div>
                 </div>
 
@@ -2114,12 +2132,13 @@ if __name__ == "__main__":
             const timelineList = timelineData.timeline || [];
 
             // 1. Render Metrics Pills
-            if (metricsContainer) {
-                const total = timelineData.total_runs || history.length;
-                const errs = timelineData.error_count || 0;
-                const succ = timelineData.success_count || (total - errs);
-                const rate = total > 0 ? Math.round((succ / total) * 100) : 100;
+            const errs = timelineData.error_count || 0;
+            const succ = timelineData.success_count || 0;
+            const total = timelineData.total_runs || (succ + errs) || history.length;
+            const judged = succ + errs;
+            const rate = judged > 0 ? Math.round((succ / judged) * 100) : 100;
 
+            if (metricsContainer) {
                 metricsContainer.innerHTML = `
                     <span class="count-pill" style="background: rgba(255,255,255,0.06); font-size:0.75rem;"><i class="fa-solid fa-list-check" style="color:var(--accent-cyan);"></i> Total: ${total} runs</span>
                     <span class="count-pill" style="background: rgba(16,185,129,0.15); color:var(--accent-green); border-color:rgba(16,185,129,0.3); font-size:0.75rem;"><i class="fa-solid fa-check"></i> ${succ} Successful (${rate}%)</span>
@@ -2127,33 +2146,37 @@ if __name__ == "__main__":
                 `;
             }
 
-            // 2. Render 24-Hour Visual Schedule Rail
+            // 2. Render 24-Hour Status & Failures Summary (compact bar + counts)
             if (trackContainer) {
                 if (!timelineList.length) {
-                    trackContainer.innerHTML = `<div style="color:var(--text-secondary); font-size:0.82rem; padding:0.5rem;">No recent executions recorded in timeline.</div>`;
+                    trackContainer.innerHTML = `<div style="color:var(--text-secondary); font-size:0.82rem; padding:0.25rem 0;">No recent executions recorded in timeline.</div>`;
                 } else {
-                    trackContainer.innerHTML = timelineList.map(t => {
-                        const isErr = t.is_error;
-                        const bg = isErr ? 'rgba(244, 63, 94, 0.22)' : 'rgba(16, 185, 129, 0.15)';
-                        const border = isErr ? '#f43f5e' : 'rgba(16, 185, 129, 0.35)';
-                        const color = isErr ? '#ff4d6d' : 'var(--accent-green)';
-                        const icon = isErr ? 'fa-circle-exclamation' : 'fa-circle-check';
-                        const durText = t.duration_s ? `${t.duration_s}s` : '';
-                        const timeShort = (t.timestamp || '').split(' ').slice(1).join(' ');
+                    const failPct = judged > 0 ? Math.round((errs / judged) * 100) : 0;
+                    const succPct = 100 - failPct;
+                    const latestTs = timelineList[0] ? timelineList[0].timestamp : '';
+                    const latestFail = timelineList.find(t => t.is_error);
 
-                        return `
-                            <div class="timeline-node" onclick="openFailureSnapshotModal('${t.id}', '${(t.name || '').replace(/'/g, "\\'")}')" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.35rem 0.7rem; border-radius:9px; background:${bg}; border:1px solid ${border}; color:${color}; font-size:0.75rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:transform 0.15s ease, box-shadow 0.15s ease;" title="${t.name} - ${t.status} at ${t.timestamp} (Click to inspect snapshot/logs)">
-                                <i class="fa-solid ${icon}"></i>
-                                <span style="color:#fff;">${t.name}</span>
-                                ${durText ? `<span style="font-size:0.68rem; opacity:0.8; font-family:'JetBrains Mono', monospace;">${durText}</span>` : ''}
-                                <span style="font-size:0.65rem; color:var(--text-secondary); opacity:0.8;">${timeShort}</span>
+                    trackContainer.innerHTML = `
+                        <div style="display:flex; flex-direction:column; gap:0.65rem; width:100%;">
+                            <div style="height:10px; width:100%; border-radius:999px; background:rgba(255,255,255,0.06); overflow:hidden; display:flex;">
+                                <div style="width:${succPct}%; background:var(--accent-green); transition:width 0.3s ease;" title="${succ} Successful (${succPct}%)"></div>
+                                ${errs > 0 ? `<div style="width:${failPct}%; background:#f43f5e; transition:width 0.3s ease;" title="${errs} Failures (${failPct}%)"></div>` : ''}
                             </div>
-                        `;
-                    }).join('');
+                            <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem; font-size:0.8rem; color:var(--text-secondary);">
+                                <span style="display:inline-flex; align-items:center; gap:0.6rem; flex-wrap:wrap;">
+                                    <span style="color:var(--accent-green); font-weight:600;"><i class="fa-solid fa-circle-check"></i> ${succ} Succeeded (${succPct}%)</span>
+                                    <span>·</span>
+                                    <span style="color:${errs > 0 ? '#f43f5e' : 'var(--text-secondary)'}; font-weight:600;"><i class="fa-solid fa-circle-xmark"></i> ${errs} Failed (${failPct}%)</span>
+                                    ${latestFail ? `<span>· Latest failure: <button class="btn btn-secondary" style="padding:0.18rem 0.55rem; font-size:0.74rem; background:rgba(244,63,94,0.16); color:#fda4af; border-color:rgba(244,63,94,0.35);" onclick="openFailureSnapshotModal('${latestFail.id}', '${(latestFail.name || '').replace(/'/g, "\\'")}')"><i class="fa-solid fa-camera"></i> ${latestFail.name}</button></span>` : ''}
+                                </span>
+                                ${latestTs ? `<span style="font-size:0.75rem; opacity:0.8;">Latest run: ${latestTs}</span>` : ''}
+                            </div>
+                        </div>
+                    `;
                 }
             }
 
-            // 3. Render Table with Failure Snapshot Buttons
+            // 3. Render Table with separate Log & Screenshot Action Buttons
             if (container) {
                 if (!history.length) {
                     container.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-secondary);">No execution history recorded yet.</div>`;
@@ -2196,9 +2219,14 @@ if __name__ == "__main__":
                                         <td style="color:var(--text-secondary);">${item.timestamp}</td>
                                         <td><span style="color:${stColor}; font-weight:600;"><i class="fa-solid ${stIcon}"></i> ${item.status}</span></td>
                                         <td>
-                                            <button class="btn btn-secondary" style="padding:0.35rem 0.75rem; font-size:0.78rem; background: ${isFail ? 'rgba(244,63,94,0.18)' : 'rgba(255,255,255,0.06)'}; color: ${isFail ? '#f43f5e' : 'var(--accent-cyan)'}; border-color: ${isFail ? 'rgba(244,63,94,0.35)' : 'var(--border-color)'};" onclick="openFailureSnapshotModal('${item.id}', '${item.name.replace(/'/g, "\\'")}')" title="Inspect snapshot, logs, and diagnostics">
-                                                <i class="fa-solid fa-camera"></i> Snapshot & Log
-                                            </button>
+                                            <div class="history-action-group">
+                                                <button class="history-action-btn" onclick="viewLogs('${item.name.replace(/'/g, "\\'")}', '${item.id}')" title="View execution log">
+                                                    <i class="fa-solid fa-file-lines"></i> Log
+                                                </button>
+                                                <button class="history-action-btn ${isFail ? 'is-fail' : 'is-ss'}" onclick="openFailureSnapshotModal('${item.id}', '${item.name.replace(/'/g, "\\'")}')" title="View screenshot & diagnostic snapshot">
+                                                    <i class="fa-solid fa-camera"></i> Screenshot
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 `;
@@ -2793,9 +2821,6 @@ if __name__ == "__main__":
             document.getElementById('modal-body').innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
                     <span style="font-size:0.8rem; color:var(--text-secondary);"><i class="fa-solid fa-file-lines"></i> ${escapeHtml(name)} execution stream</span>
-                    <button class="btn btn-primary" onclick="diagnoseLogWithAi(\`${encodeURIComponent(logText.slice(0, 8000))}\`, '${name}')" style="padding:0.35rem 0.8rem; font-size:0.78rem; background:linear-gradient(135deg, #ec4899, #8b5cf6);">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> Diagnose with AI
-                    </button>
                 </div>
                 <div class="terminal-box" id="active-modal-log-box" style="white-space: pre-wrap; word-break: break-all; max-height: 480px; overflow-y: auto;">${escapeHtml(logText)}</div>
             `;
@@ -3290,9 +3315,6 @@ if __name__ == "__main__":
             const data = await res.json();
             showToast(data.message || data.error, res.ok ? 'success' : 'error');
             setTimeout(loadSystemdServices, 1500);
-            if (unit.includes('vulkan') || unit.includes('ollama') || unit.includes('ai')) {
-                setTimeout(loadAiOpsStatus, 1500);
-            }
         } catch (e) {
             showToast(`Failed to ${action} ${unit}`, 'error');
         }
@@ -3890,246 +3912,6 @@ if __name__ == "__main__":
         }
     }
 
-    // ==========================================
-    // --- 2. LOCAL AI OPS & OLLAMA CONTROLLER ---
-    // ==========================================
-    async function loadAiOpsStatus() {
-        loadOpenCodeStatus();
-        const badge = document.getElementById('ollama-status-badge');
-        const modelsList = document.getElementById('ai-models-list');
-        const countPill = document.getElementById('models-count-pill');
-        const modelSelect = document.getElementById('copilot-model-select');
-
-        try {
-            const res = await fetch('/api/ai/models');
-            const data = await res.json();
-
-            if (data.running) {
-                if (badge) {
-                    badge.innerHTML = `<i class="fa-solid fa-circle" style="color:var(--accent-green); font-size:0.65rem;"></i> Ollama Online`;
-                    badge.style.background = 'rgba(16, 185, 129, 0.15)';
-                    badge.style.color = 'var(--accent-green)';
-                    badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
-                }
-            } else {
-                if (badge) {
-                    badge.innerHTML = `<i class="fa-solid fa-circle" style="color:var(--accent-amber); font-size:0.65rem;"></i> Ollama Offline`;
-                    badge.style.background = 'rgba(245, 158, 11, 0.15)';
-                    badge.style.color = '#f59e0b';
-                    badge.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-                }
-            }
-
-            const models = data.models || [];
-            if (countPill) countPill.innerText = `${models.length} model${models.length === 1 ? '' : 's'}`;
-
-            if (modelSelect && models.length) {
-                modelSelect.innerHTML = models.map(m => `<option value="${m.name}">${m.name} (${m.size})</option>`).join('');
-            }
-
-            if (!models.length) {
-                if (modelsList) {
-                    modelsList.innerHTML = `
-                        <div style="color:var(--text-secondary); text-align:center; padding:1.5rem; font-size:0.85rem;">
-                            No Ollama models downloaded yet.<br>
-                            <span style="font-size:0.78rem; color:var(--accent-cyan);">Type <code>tinyllama</code> or <code>mistral</code> above and click Pull!</span>
-                        </div>
-                    `;
-                }
-                return;
-            }
-
-            if (modelsList) {
-                modelsList.innerHTML = models.map(m => `
-                    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong style="color: #fff; font-size: 0.9rem;">${m.name}</strong>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.2rem;">
-                                Size: <span style="color: var(--accent-cyan); font-weight: 600;">${m.size}</span> | Updated: ${m.modified_at}
-                            </div>
-                        </div>
-                        <button class="btn btn-secondary" onclick="deleteModelAction('${m.name}')" style="padding: 0.3rem 0.6rem; font-size: 0.72rem; color: var(--accent-red);" title="Delete Model">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </div>
-                `).join('');
-            }
-        } catch (e) {
-            if (modelsList) modelsList.innerHTML = `<div style="color:var(--accent-red);">Error fetching AI models.</div>`;
-        }
-    }
-
-    async function startOllamaService() {
-        showToast('Starting local AI engine (AMD GPU)...', 'info', 2500);
-        try {
-            const res = await fetch('/api/ai/start', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message || 'AI engine startup requested', 'success');
-            setTimeout(() => { loadAiOpsStatus(); loadSystemdServices(); }, 2000);
-        } catch (e) {
-            showToast('Failed to start AI engine', 'error');
-        }
-    }
-
-    async function stopOllamaService() {
-        showToast('Stopping AI daemons and background runners...', 'info', 2000);
-        try {
-            const res = await fetch('/api/ai/stop', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message || 'AI services stopped', 'success');
-            setTimeout(() => { loadAiOpsStatus(); loadSystemdServices(); }, 1500);
-        } catch (e) {
-            showToast('Failed to stop AI engine', 'error');
-        }
-    }
-
-    async function restartOllamaService() {
-        showToast('Restarting AI engine...', 'info', 2500);
-        try {
-            const res = await fetch('/api/ai/restart', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message || 'AI engine restarted', 'success');
-            setTimeout(() => { loadAiOpsStatus(); loadSystemdServices(); }, 2000);
-        } catch (e) {
-            showToast('Failed to restart AI engine', 'error');
-        }
-    }
-
-    async function stopAiProcessesAction() {
-        showToast('Terminating active AI inference processes...', 'info', 2000);
-        try {
-            const res = await fetch('/api/ai/kill', { method: 'POST' });
-            const data = await res.json();
-            showToast(data.message || 'AI processes terminated and CPU reset.', 'success', 3500);
-            const box = document.getElementById('copilot-response-box');
-            if (box) {
-                box.innerHTML = `[AI Process Terminated]: All active inference processes killed. CPU & RAM freed.`;
-            }
-            loadAiOpsStatus();
-            loadSystemdServices();
-        } catch (e) {
-            showToast('Error stopping AI processes', 'error');
-        }
-    }
-
-    async function pullModelAction() {
-        const input = document.getElementById('pull-model-input');
-        const modelName = input.value.trim();
-        if (!modelName) {
-            showToast('Enter a model name to pull (e.g. tinyllama)', 'error');
-            return;
-        }
-        showToast(`Started pulling model '${modelName}' in background...`, 'info', 4000);
-        input.value = '';
-        try {
-            const res = await fetch('/api/ai/models/pull', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: modelName })
-            });
-            const data = await res.json();
-            showToast(data.message || 'Pull initiated', 'success');
-        } catch (e) {
-            showToast('Failed to initiate pull', 'error');
-        }
-    }
-
-    async function deleteModelAction(modelName) {
-        showConfirm('Remove Model', `Are you sure you want to delete model '${modelName}'?`, async () => {
-            try {
-                const res = await fetch('/api/ai/models/delete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ model: modelName })
-                });
-                const data = await res.json();
-                showToast(data.message || 'Model deleted', 'success');
-                loadAiOpsStatus();
-            } catch (e) {
-                showToast('Failed to delete model', 'error');
-            }
-        }, true);
-    }
-
-    function setCopilotPrompt(text) {
-        const input = document.getElementById('copilot-input');
-        if (input) {
-            input.value = text;
-            askCopilotAction();
-        }
-    }
-
-    async function askCopilotAction() {
-        const input = document.getElementById('copilot-input');
-        const box = document.getElementById('copilot-response-box');
-        const modelSelect = document.getElementById('copilot-model-select');
-        const q = input.value.trim();
-        if (!q) return;
-
-        input.value = '';
-        box.innerHTML = `> Query: ${q}\n\n🤖 Analyzing request with local AI (CPU thread capped)...\n`;
-
-        try {
-            const res = await fetch('/api/ai/ask', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: q, model: modelSelect ? modelSelect.value : null })
-            });
-            const data = await res.json();
-            if (data.success) {
-                box.innerHTML = `> Query: ${q}\n\n🤖 [${data.model_used || 'AI Copilot'}]:\n${data.reply}`;
-            } else {
-                box.innerHTML = `> Query: ${q}\n\n⚠️ Error: ${data.error}`;
-            }
-        } catch (e) {
-            box.innerHTML = `> Query: ${q}\n\n⚠️ Connection failed to Ops Copilot API.`;
-        }
-    }
-
-    async function diagnoseLogWithAi(encodedLog, scriptName) {
-        const logText = decodeURIComponent(encodedLog);
-        document.getElementById('modal-title').innerText = `AI Diagnosis: ${scriptName}`;
-        document.getElementById('modal-body').innerHTML = `
-            <div style="padding: 1.5rem; text-align: center;">
-                <div style="width: 50px; height: 50px; border-radius: 50%; border: 3px solid rgba(236,72,153,0.2); border-top-color: #ec4899; animation: spin 1s linear infinite; margin: 0 auto 1rem auto;"></div>
-                <h4 style="font-size: 1.1rem; color: #fff; margin-bottom: 0.4rem;">Analyzing Log Traceback with Local AI...</h4>
-                <p style="font-size: 0.85rem; color: var(--text-secondary);">Querying Ollama to isolate root cause, severity, and exact remediation steps.</p>
-                <button class="btn btn-secondary" onclick="stopAiProcessesAction(); closeModal();" style="margin-top: 1rem; color: var(--accent-red); border-color: rgba(239,68,68,0.3);">
-                    <i class="fa-solid fa-stop"></i> Cancel / Stop AI
-                </button>
-            </div>
-        `;
-        document.getElementById('viewer-modal').classList.add('active');
-
-        try {
-            const res = await fetch('/api/ai/diagnose', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ log: logText, script_name: scriptName })
-            });
-            const data = await res.json();
-            
-            document.getElementById('modal-body').innerHTML = `
-                <div style="display: flex; flex-direction: column; gap: 1rem;">
-                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;">
-                        <span class="count-pill" style="background: rgba(236,72,153,0.15); color: #ec4899; border-color: rgba(236,72,153,0.3);">
-                            <i class="fa-solid fa-brain"></i> Model: ${data.model_used || 'Ollama AI'}
-                        </span>
-                        <span style="font-size: 0.78rem; color: var(--text-secondary);">Target: <strong>${scriptName}</strong></span>
-                    </div>
-                    <div style="background: rgba(0, 0, 0, 0.4); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.25rem; font-size: 0.88rem; color: #e2e8f0; line-height: 1.6; white-space: pre-wrap;">
-${data.analysis || 'Analysis could not be generated.'}
-                    </div>
-                    <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
-                        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-                    </div>
-                </div>
-            `;
-        } catch (e) {
-            document.getElementById('modal-body').innerHTML = `<div style="color:var(--accent-red); padding:1rem;">Error running AI diagnosis.</div>`;
-        }
-    }
-
     // --- OPENCODE AI STUDIO CONTROLLER ---
     async function loadOpenCodeStatus() {
         const badge = document.getElementById('opencode-status-badge');
@@ -4690,6 +4472,10 @@ ${data.analysis || 'Analysis could not be generated.'}
         document.body.classList.remove('modal-open');
         document.body.style.overflow = '';
         if (updateLogTimer) clearInterval(updateLogTimer);
+        if (activeTasksModalTimer) {
+            clearInterval(activeTasksModalTimer);
+            activeTasksModalTimer = null;
+        }
     }
 
     // Auto-sync body scroll lock whenever a modal becomes active/inactive
@@ -5156,7 +4942,7 @@ ${data.analysis || 'Analysis could not be generated.'}
         localStorage.setItem('sound_effects_enabled', enabled ? 'true' : 'false');
         updateSoundUIState(enabled);
         if (enabled) {
-            playTactileTick(600, 0.02, 0.1);
+            playTactileTick(640);
             showToast('Sound Effects Enabled', 'info', 2500);
         } else {
             showToast('Sound Effects Muted', 'info', 2500);
@@ -5181,25 +4967,36 @@ ${data.analysis || 'Analysis could not be generated.'}
     }
     window.updateSoundUIState = updateSoundUIState;
 
-    function playTactileTick(freq = 520, duration = 0.012, gainLevel = 0.08) {
+    function playTactileTick(freq = 480, duration = 0.036, gainLevel = 0.26) {
         if (!isSoundEffectsEnabled()) return;
-        const now = (typeof performance !== 'undefined') ? performance.now() : Date.now();
-        if (now - lastTickTime < 35) return;
-        lastTickTime = now;
+        const nowMs = (typeof performance !== 'undefined') ? performance.now() : Date.now();
+        if (nowMs - lastTickTime < 35) return;
+        lastTickTime = nowMs;
 
         try {
             if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(gainLevel, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
+            const schedulePop = () => {
+                const now = audioCtx.currentTime;
+                const startTime = now + 0.006;
+                const stopTime = startTime + duration;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                osc.frequency.exponentialRampToValueAtTime(Math.max(40, freq * 0.65), stopTime);
+                gain.gain.setValueAtTime(0.001, now);
+                gain.gain.linearRampToValueAtTime(gainLevel, startTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, stopTime);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(startTime);
+                osc.stop(stopTime);
+            };
+            if (audioCtx.state !== 'running') {
+                audioCtx.resume().then(schedulePop).catch(() => {});
+            } else {
+                schedulePop();
+            }
         } catch (e) {}
     }
     window.playTactileTick = playTactileTick;
@@ -5212,9 +5009,9 @@ ${data.analysis || 'Analysis could not be generated.'}
             if (interactive.disabled || interactive.classList.contains('disabled') || interactive.getAttribute('aria-disabled') === 'true') {
                 return;
             }
-            playTactileTick(520, 0.012, 0.08);
+            playTactileTick();
         }
-    });
+    }, { passive: true });
 
     // ==========================================================================
     // BLUR MASK CROSSFADE HELPERS
@@ -5225,7 +5022,7 @@ ${data.analysis || 'Analysis could not be generated.'}
             return;
         }
         btn.classList.add('btn-blur-morphing');
-        playTactileTick(680, 0.018);
+        playTactileTick(680);
         setTimeout(() => {
             if (typeof updateContentCallback === 'function') updateContentCallback();
             setTimeout(() => btn.classList.remove('btn-blur-morphing'), 30);
@@ -5252,7 +5049,16 @@ ${data.analysis || 'Analysis could not be generated.'}
     function updateTabSpring() {
         const activeBtn = document.querySelector('.category-tabs-inner .tab-btn.active');
         const pill = document.getElementById('tabSpringPill');
-        if (!activeBtn || !pill) return;
+        if (!pill) return;
+        if (!activeBtn) {
+            pill.style.opacity = '0';
+            pill.style.pointerEvents = 'none';
+            pill.classList.add('is-hidden');
+            return;
+        }
+        pill.classList.remove('is-hidden');
+        pill.style.opacity = '1';
+        pill.style.pointerEvents = 'none';
         const left = activeBtn.offsetLeft;
         const width = activeBtn.offsetWidth;
         pill.style.setProperty('--tab-x', `${left}px`);
@@ -5272,10 +5078,13 @@ ${data.analysis || 'Analysis could not be generated.'}
 
     function startHoldReboot(e, btn) {
         if (e && e.button !== 0 && e.pointerType === 'mouse') return;
-        playTactileTick(420, 0.02);
+        playTactileTick(420);
         btn.classList.add('holding');
         const textSpan = btn.querySelector('.hold-text');
         if (textSpan) {
+            if (!btn.getAttribute('data-default-text')) {
+                btn.setAttribute('data-default-text', textSpan.innerHTML);
+            }
             textSpan.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Keep Holding... (1.5s)';
         }
 
@@ -5294,7 +5103,8 @@ ${data.analysis || 'Analysis could not be generated.'}
             }
 
             setTimeout(() => {
-                if (textSpan) textSpan.innerHTML = '<i class="fa-solid fa-power-off"></i> Hold to Reboot Server';
+                const defaultText = btn.getAttribute('data-default-text') || '<i class="fa-solid fa-power-off"></i> Hold to Reboot Server';
+                if (textSpan) textSpan.innerHTML = defaultText;
             }, 3500);
         }, 1500);
     }
@@ -5308,7 +5118,8 @@ ${data.analysis || 'Analysis could not be generated.'}
         btn.classList.remove('holding');
         const textSpan = btn.querySelector('.hold-text');
         if (textSpan && !textSpan.innerText.includes('Rebooting')) {
-            textSpan.innerHTML = '<i class="fa-solid fa-power-off"></i> Hold to Reboot Server';
+            const defaultText = btn.getAttribute('data-default-text') || '<i class="fa-solid fa-power-off"></i> Hold to Reboot Server';
+            textSpan.innerHTML = defaultText;
         }
     }
     window.cancelHoldReboot = cancelHoldReboot;
@@ -5529,7 +5340,6 @@ ${data.analysis || 'Analysis could not be generated.'}
                 { id: 'Services & Dockge', label: 'Services & Containers', icon: 'fa-solid fa-server', color: '#3b82f6' },
                 { id: 'smart-storage-tab', label: 'SMART Storage Drives', icon: 'fa-solid fa-hard-drive', color: '#06b6d4' },
                 { id: 'pipelines-tab', label: 'Automation Pipelines', icon: 'fa-solid fa-bolt', color: '#eab308' },
-                { id: 'ai-tab', label: 'AI Ops Copilot', icon: 'fa-solid fa-brain', color: '#ec4899' },
                 { id: 'system-tab', label: 'Settings & System Tab', icon: 'fa-solid fa-gear', color: '#2997ff' },
                 { id: 'Execution History', label: 'Execution History Timeline', icon: 'fa-solid fa-chart-line', color: '#34d399' }
             ];

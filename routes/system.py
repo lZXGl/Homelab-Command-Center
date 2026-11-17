@@ -104,6 +104,18 @@ def get_stats():
     except Exception:
         pass
 
+    # Check if system reboot is required
+    reboot_required = os.path.exists("/var/run/reboot-required")
+    reboot_pkgs = []
+    if reboot_required and os.path.exists("/var/run/reboot-required.pkgs"):
+        try:
+            with open("/var/run/reboot-required.pkgs", "r") as f:
+                reboot_pkgs = [line.strip() for line in f if line.strip()]
+        except Exception:
+            pass
+    stats["reboot_required"] = reboot_required
+    stats["reboot_packages"] = reboot_pkgs
+
     active_tasks = get_active_tasks()
     stats["is_updating"] = is_updating
     stats["running_count"] = len(active_tasks)

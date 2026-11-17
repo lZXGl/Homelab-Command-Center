@@ -29,18 +29,6 @@ from .automation_pipeline import (
     trigger_event,
     trigger_webhook
 )
-from .ai_ops_manager import (
-    is_ollama_running,
-    start_ollama_service,
-    stop_ollama_service,
-    restart_ollama_service,
-    stop_ai_processes,
-    list_local_models,
-    diagnose_log_error,
-    ask_ops_copilot,
-    pull_ollama_model,
-    delete_ollama_model
-)
 from .smart_storage_manager import (
     get_block_devices_info,
     calculate_storage_forecast,
@@ -84,16 +72,6 @@ __all__ = [
     "execute_pipeline",
     "trigger_event",
     "trigger_webhook",
-    "is_ollama_running",
-    "start_ollama_service",
-    "stop_ollama_service",
-    "restart_ollama_service",
-    "stop_ai_processes",
-    "list_local_models",
-    "diagnose_log_error",
-    "ask_ops_copilot",
-    "pull_ollama_model",
-    "delete_ollama_model",
     "get_block_devices_info",
     "calculate_storage_forecast",
     "get_fast_storage_breakdown",

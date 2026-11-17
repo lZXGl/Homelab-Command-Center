@@ -193,8 +193,8 @@ def get_disk_usage_stats():
         used1 = total1 - free1
         percent1 = round((used1 / total1) * 100, 1) if total1 else 0
         free_gb1 = round(free1 / (1024 ** 3), 1)
-        res["disk1"] = f"{percent1}% ({free_gb1} GB Free)"
-        res["disk1_percent"] = f"{percent1}% ({free_gb1} GB Free)"
+        res["disk1"] = f"{percent1:.0f}% · {free_gb1}G free"
+        res["disk1_percent"] = f"{percent1:.0f}% · {free_gb1}G free"
     except Exception:
         pass
 
@@ -208,8 +208,8 @@ def get_disk_usage_stats():
             used2 = total2 - free2
             percent2 = round((used2 / total2) * 100, 1) if total2 else 0
             free_gb2 = round(free2 / (1024 ** 3), 1)
-            res["disk2"] = f"{percent2}% ({free_gb2} GB Free)"
-            res["disk2_percent"] = f"{percent2}% ({free_gb2} GB Free)"
+            res["disk2"] = f"{percent2:.0f}% · {free_gb2}G free"
+            res["disk2_percent"] = f"{percent2:.0f}% · {free_gb2}G free"
             res["disk2_name"] = os.path.basename(sec_path.rstrip("/")) or "Storage"
         except Exception:
             pass
@@ -275,7 +275,7 @@ def get_gpu_stats():
         "vram_total_mb": 2048,
         "vram_percent": "0%",
         "gpu_temp": "N/A",
-        "vram_text": "0.0 / 2.0 GB",
+        "vram_text": "0.0/2.0 GB",
         "has_gpu": False
     }
     
@@ -303,7 +303,7 @@ def get_gpu_stats():
                 stats['vram_used_mb'] = used_mb
                 stats['vram_total_mb'] = total_mb
                 stats['vram_percent'] = f"{(used / total * 100):.0f}%"
-                stats['vram_text'] = f"{used_mb / 1024:.1f} / {total_mb / 1024:.1f} GB"
+                stats['vram_text'] = f"{used_mb / 1024:.1f}/{total_mb / 1024:.1f} GB"
                 stats['has_gpu'] = True
         except Exception:
             pass
@@ -314,7 +314,10 @@ def get_gpu_stats():
         try:
             with open(temp_paths[0], 'r') as f:
                 t = int(f.read().strip()) / 1000.0
-                stats['gpu_temp'] = f"{t:.0f}°C"
+                if 0 < t < 150:
+                    stats['gpu_temp'] = f"{t:.0f}°C"
+                else:
+                    stats['gpu_temp'] = "N/A"
                 stats['has_gpu'] = True
         except Exception:
             pass
@@ -358,12 +361,8 @@ def get_systemd_services_status(services_config):
         
         if unit:
             try:
-                if unit in ["vulkan-ai.service", "ollama.service"]:
-                    from services.ai_ops_manager import is_vulkan_ai_running, is_ollama_running
-                    is_active = is_vulkan_ai_running() or is_ollama_running()
-                else:
-                    res = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True)
-                    is_active = (res.stdout.strip() == "active")
+                res = subprocess.run(["systemctl", "is-active", unit], capture_output=True, text=True)
+                is_active = (res.stdout.strip() == "active")
                 item["active"] = is_active
                 item["status"] = "Online" if is_active else "Offline"
                 item["status_text"] = "Active" if is_active else "Inactive"
@@ -377,18 +376,6 @@ def exec_systemd_action(unit, action):
     if action not in ["start", "stop", "restart"]:
         return False, "Action not permitted"
     try:
-        if unit in ["vulkan-ai.service", "ollama.service", "vulkan-ai", "ollama"]:
-            from services.ai_ops_manager import start_ollama_service, stop_ollama_service, restart_ollama_service
-            if action == "stop":
-                success, msg = stop_ollama_service()
-                return success, msg
-            elif action == "start":
-                success, msg = start_ollama_service()
-                return success, msg
-            elif action == "restart":
-                success, msg = restart_ollama_service()
-                return success, msg
-
         subprocess.run(["sudo", "-n", "systemctl", action, unit], capture_output=True, text=True, timeout=8)
         return True, f"Successfully executed '{action}' on {unit}"
     except Exception as e:

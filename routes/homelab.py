@@ -15,7 +15,11 @@ from config import (
     save_dockge_status_config
 )
 from services import add_history, send_alert
-from services.homelab_manager import discover_docker_containers
+from services.homelab_manager import (
+    discover_docker_containers,
+    get_stack_docker_stats,
+    get_systemd_unit_stats
+)
 
 homelab_bp = Blueprint('homelab', __name__)
 
@@ -43,8 +47,13 @@ def get_services():
                 # Update port if discovered
                 if discovered_map[container_name].get("port"):
                     item["port"] = discovered_map[container_name]["port"]
-                item["cpu_percent"] = discovered_map[container_name].get("cpu_percent", "")
-                item["mem_usage"] = discovered_map[container_name].get("mem_usage", "")
+                if svc.get("stack_containers"):
+                    stack_stats = get_stack_docker_stats(svc["stack_containers"])
+                    item["cpu_percent"] = stack_stats.get("cpu") or discovered_map[container_name].get("cpu_percent", "")
+                    item["mem_usage"] = stack_stats.get("mem") or discovered_map[container_name].get("mem_usage", "")
+                else:
+                    item["cpu_percent"] = discovered_map[container_name].get("cpu_percent", "")
+                    item["mem_usage"] = discovered_map[container_name].get("mem_usage", "")
                 results.append(item)
             elif is_custom:
                 # Custom user-added container
@@ -53,12 +62,16 @@ def get_services():
         elif systemd_name:
             is_active = False
             try:
-                res = subprocess.run(["systemctl", "is-active", systemd_name], capture_output=True, text=True)
+                res = subprocess.run(["systemctl", "is-active", systemd_name], capture_output=True, text=True, timeout=3)
                 is_active = (res.stdout.strip() == "active")
             except Exception:
                 pass
             if is_active:
                 item["status"] = "Online"
+                unit_stats = get_systemd_unit_stats(systemd_name)
+                if unit_stats:
+                    item["cpu_percent"] = unit_stats.get("cpu", "")
+                    item["mem_usage"] = unit_stats.get("mem", "")
                 results.append(item)
             elif is_custom:
                 item["status"] = "Offline"

@@ -94,7 +94,8 @@ CORE_HOMELAB_SERVICES = [
         "url": f"http://{PRIMARY_IP}:8096",
         "desc": "Self-hosted movies, TV shows & media streaming",
         "icon": "fa-film",
-        "systemd": "jellyfin"
+        "systemd": "jellyfin",
+        "resource_tags": ["VA-API GPU", "Web :8096", "Systemd"]
     },
     {
         "id": "adguard",
@@ -104,7 +105,8 @@ CORE_HOMELAB_SERVICES = [
         "protocol": "http",
         "url": f"http://{PRIMARY_IP}:8083",
         "desc": "Primary DNS filter, DoH encryption & app blocker",
-        "icon": "fa-shield-halved"
+        "icon": "fa-shield-halved",
+        "resource_tags": ["DNS :53", "DoT :853", "Web :8083"]
     },
     {
         "id": "dockge",
@@ -114,7 +116,8 @@ CORE_HOMELAB_SERVICES = [
         "protocol": "http",
         "url": f"http://{PRIMARY_IP}:5001",
         "desc": "Compose-oriented Docker stack management interface",
-        "icon": "fa-cubes"
+        "icon": "fa-cubes",
+        "resource_tags": ["Compose UI", "Web :5001"]
     },
     {
         "id": "immich",
@@ -124,7 +127,9 @@ CORE_HOMELAB_SERVICES = [
         "protocol": "http",
         "url": f"http://{PRIMARY_IP}:2283",
         "desc": "High performance self-hosted photo & video backup",
-        "icon": "fa-images"
+        "icon": "fa-images",
+        "stack_containers": ["immich_server", "immich_machine_learning", "immich_postgres", "immich_redis"],
+        "resource_tags": ["ML Stack", "Postgres + Redis", "Web :2283"]
     },
     {
         "id": "vaultwarden",
@@ -134,7 +139,8 @@ CORE_HOMELAB_SERVICES = [
         "protocol": "http",
         "url": f"http://{PRIMARY_IP}:8080",
         "desc": "Bitwarden-compatible end-to-end encrypted vault",
-        "icon": "fa-key"
+        "icon": "fa-key",
+        "resource_tags": ["Vault :8080", "Rocket TLS"]
     },
     {
         "id": "pihole",
@@ -144,7 +150,8 @@ CORE_HOMELAB_SERVICES = [
         "url": f"http://{PRIMARY_IP}/admin/",
         "desc": "Secondary DNS sinkhole & network tracker blocker",
         "icon": "fa-shield-virus",
-        "systemd": "pihole-FTL"
+        "systemd": "pihole-FTL",
+        "resource_tags": ["DNS :53", "Web :80", "FTL Engine"]
     }
 ]
 

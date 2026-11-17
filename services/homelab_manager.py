@@ -52,6 +52,81 @@ def get_docker_stats():
     with _STATS_LOCK:
         return dict(_DOCKER_STATS_CACHE.get("data", {}))
 
+
+def _parse_mem_to_mib(mem_str):
+    """Parse docker stats memory token (e.g. '744.2MiB / 2GiB') into MiB float."""
+    if not mem_str:
+        return 0.0
+    used_part = mem_str.split('/')[0].strip()
+    m = re.match(r'^([0-9.]+)\s*(B|KiB|KB|MiB|MB|GiB|GB)$', used_part, re.IGNORECASE)
+    if not m:
+        return 0.0
+    val = float(m.group(1))
+    unit = m.group(2).lower()
+    if unit == 'b':
+        return val / (1024 * 1024)
+    if unit in ('kib', 'kb'):
+        return val / 1024
+    if unit in ('mib', 'mb'):
+        return val
+    if unit in ('gib', 'gb'):
+        return val * 1024
+    return 0.0
+
+
+def get_stack_docker_stats(container_names):
+    """Aggregate CPU% and memory usage across all containers in a Compose stack."""
+    stats_map = get_docker_stats()
+    total_cpu = 0.0
+    total_mib = 0.0
+    found = False
+    for cname in container_names or []:
+        c_stat = stats_map.get(cname)
+        if not c_stat:
+            continue
+        found = True
+        try:
+            total_cpu += float(c_stat.get("cpu", "0%").replace("%", "").strip() or 0)
+        except ValueError:
+            pass
+        total_mib += _parse_mem_to_mib(c_stat.get("mem", ""))
+
+    if not found:
+        return {}
+    mem_str = f"{total_mib / 1024:.2f}GiB" if total_mib >= 1024 else f"{total_mib:.1f}MiB"
+    return {"cpu": f"{total_cpu:.2f}%", "mem": mem_str}
+
+
+def get_systemd_unit_stats(unit_name):
+    """Fetch live CPU% and RSS memory for an active systemd unit's MainPID."""
+    if not unit_name:
+        return {}
+    try:
+        pid_res = subprocess.run(
+            ["systemctl", "show", "-p", "MainPID", "--value", unit_name],
+            capture_output=True, text=True, timeout=3
+        )
+        pid = pid_res.stdout.strip()
+        if not pid or pid == "0":
+            return {}
+        ps_res = subprocess.run(
+            ["ps", "-p", pid, "-o", "%cpu=,rss="],
+            capture_output=True, text=True, timeout=3
+        )
+        line = ps_res.stdout.strip()
+        if not line:
+            return {}
+        parts = line.split()
+        if len(parts) >= 2:
+            cpu = float(parts[0])
+            rss_kib = float(parts[1])
+            rss_mib = rss_kib / 1024.0
+            mem_str = f"{rss_mib / 1024:.2f}GiB" if rss_mib >= 1024 else f"{rss_mib:.1f}MiB"
+            return {"cpu": f"{cpu:.1f}%", "mem": mem_str}
+    except Exception:
+        pass
+    return {}
+
 def discover_docker_containers():
     discovered = []
     stats_map = get_docker_stats()

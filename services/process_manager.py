@@ -159,14 +159,47 @@ def get_active_tasks():
                 continue
             if script_name in cmd or f"cron_runner.py {s_id}" in cmd:
                 seen_ids.add(s_id)
+                # Compute real-time CPU% and RSS memory across process tree via psutil
+                cpu_disp = f"{cpu}%"
+                mem_disp = f"{mem}%"
+                try:
+                    import psutil
+                    p = psutil.Process(pid)
+                    family = [p] + p.children(recursive=True)
+                    for proc in family:
+                        try:
+                            proc.cpu_percent(interval=None)
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            pass
+                    time.sleep(0.15)
+                    tot_rss = 0
+                    tot_cpu = 0.0
+                    tot_mem_pct = 0.0
+                    for proc in family:
+                        try:
+                            tot_rss += proc.memory_info().rss
+                            tot_mem_pct += proc.memory_percent()
+                            tot_cpu += proc.cpu_percent(interval=None)
+                        except (psutil.NoSuchProcess, psutil.AccessDenied):
+                            pass
+                    rss_mb = tot_rss / (1024 * 1024)
+                    if rss_mb >= 0.1:
+                        mem_disp = f"{rss_mb:.1f} MB ({tot_mem_pct:.1f}%)"
+                    elif tot_mem_pct > 0:
+                        mem_disp = f"{tot_mem_pct:.1f}%"
+
+                    cpu_disp = f"{tot_cpu:.1f}%"
+                except Exception:
+                    pass
+
                 active.append({
                     "id": s_id,
                     "name": display_name,
                     "script": script_name,
                     "icon": icon,
                     "pid": pid,
-                    "cpu": f"{cpu}%",
-                    "mem": f"{mem}%",
+                    "cpu": cpu_disp,
+                    "mem": mem_disp,
                     "elapsed": etime,
                     "cmd": cmd
                 })

@@ -15,7 +15,6 @@ from routes import (
     storage_bp,
     backup_bp,
     pipelines_bp,
-    ai_ops_bp,
     smart_storage_bp,
     opencode_bp
 )
@@ -31,7 +30,6 @@ app.register_blueprint(homelab_bp)
 app.register_blueprint(storage_bp)
 app.register_blueprint(backup_bp)
 app.register_blueprint(pipelines_bp)
-app.register_blueprint(ai_ops_bp)
 app.register_blueprint(smart_storage_bp)
 app.register_blueprint(opencode_bp)
 
